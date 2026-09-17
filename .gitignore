@@ -1,0 +1,31 @@
+# Ferramenta local de agente — não vai para o GitHub público
+.claude/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.rsuser
+project.lock.json
+artifacts/
+
+# Node / Vite
+node_modules/
+dist/
+*.local
+.env
+.env.*
+!.env.example
+
+# Testcontainers / logs
+*.log
+TestResults/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
