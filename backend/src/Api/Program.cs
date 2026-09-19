@@ -15,8 +15,16 @@ builder.Services.AddDbContext<DengueDbContext>(options =>
 builder.Services.AddHttpClient<IAlertaDengueClient, AlertaDengueClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["AlertaDengue:BaseUrl"]!));
 builder.Services.AddScoped<IDengueAlertRepository, DengueAlertRepository>();
+builder.Services.AddScoped<IDengueQueryService, DengueQueryService>();
 builder.Services.AddScoped<IDengueSyncService, DengueSyncService>();
 builder.Services.AddHostedService<DengueSyncHostedService>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.WithOrigins(builder.Configuration["Cors:FrontendOrigin"]!)
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
 
 var app = builder.Build();
 
@@ -42,6 +50,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 
