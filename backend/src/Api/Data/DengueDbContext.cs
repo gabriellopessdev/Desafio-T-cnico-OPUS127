@@ -16,6 +16,7 @@ public sealed class DengueDbContext : DbContext
         modelBuilder.Entity<DengueWeeklyAlert>(entity =>
         {
             entity.ToTable("DengueWeeklyAlerts");
+            entity.Property(e => e.EstimatedCases).HasPrecision(18, 2);
             entity.HasIndex(e => new { e.EpidemiologicalYear, e.EpidemiologicalWeek })
                 .IsUnique();
         });
