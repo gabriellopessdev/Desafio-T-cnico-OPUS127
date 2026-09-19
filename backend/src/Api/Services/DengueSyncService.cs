@@ -7,6 +7,8 @@ namespace Opus127.Dengue.Api.Services;
 
 public sealed class DengueSyncService : IDengueSyncService
 {
+    private static readonly SemaphoreSlim SyncGate = new(1, 1);
+
     private readonly IAlertaDengueClient _client;
     private readonly IDengueAlertRepository _repository;
     private readonly string _geocode;
@@ -23,30 +25,38 @@ public sealed class DengueSyncService : IDengueSyncService
 
     public async Task<int> SyncLastSixMonthsAsync(CancellationToken cancellationToken)
     {
-        var now = DateTimeOffset.UtcNow;
-        var ranges = EpidemiologicalCalendar.RangesForLastMonths(now, 6);
-        var alerts = new List<DengueWeeklyAlert>();
-
-        foreach (var (eyStart, ewStart, eyEnd, ewEnd) in ranges)
+        await SyncGate.WaitAsync(cancellationToken);
+        try
         {
-            var weeks = await _client.GetCityAlertsAsync(ewStart, ewEnd, eyStart, eyEnd, cancellationToken);
-            foreach (var dto in weeks)
-            {
-                var week = EpidemiologicalWeek.FromSe(dto.SE);
-                alerts.Add(new DengueWeeklyAlert
-                {
-                    EpidemiologicalYear = week.Year,
-                    EpidemiologicalWeek = week.Week,
-                    EstimatedCases = dto.casos_est,
-                    NotifiedCases = dto.casos,
-                    AlertLevel = dto.nivel,
-                    Geocode = _geocode,
-                    SyncedAt = now
-                });
-            }
-        }
+            var now = DateTimeOffset.UtcNow;
+            var ranges = EpidemiologicalCalendar.RangesForLastMonths(now, 6);
+            var alerts = new List<DengueWeeklyAlert>();
 
-        await _repository.UpsertRangeAsync(alerts, cancellationToken);
-        return alerts.Count;
+            foreach (var (eyStart, ewStart, eyEnd, ewEnd) in ranges)
+            {
+                var weeks = await _client.GetCityAlertsAsync(ewStart, ewEnd, eyStart, eyEnd, cancellationToken);
+                foreach (var dto in weeks)
+                {
+                    var week = EpidemiologicalWeek.FromSe(dto.SE);
+                    alerts.Add(new DengueWeeklyAlert
+                    {
+                        EpidemiologicalYear = week.Year,
+                        EpidemiologicalWeek = week.Week,
+                        EstimatedCases = dto.casos_est,
+                        NotifiedCases = dto.casos,
+                        AlertLevel = dto.nivel,
+                        Geocode = _geocode,
+                        SyncedAt = now
+                    });
+                }
+            }
+
+            await _repository.UpsertRangeAsync(alerts, cancellationToken);
+            return alerts.Count;
+        }
+        finally
+        {
+            SyncGate.Release();
+        }
     }
 }

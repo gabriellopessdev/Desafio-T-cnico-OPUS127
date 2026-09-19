@@ -14,20 +14,32 @@ Sem estes três itens a subida local **não funciona**:
 |---|---|---|
 | [Docker Desktop](https://docs.docker.com/get-docker/) (ou Engine + Compose) | com o plugin `compose` | SQL Server 2022 na porta `1433` |
 | [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | `10.0.x` (`dotnet --version`) | API e testes |
-| [Node.js](https://nodejs.org/) | **20 ou superior** | interface Vite |
+| [Node.js](https://nodejs.org/) | **20 ou superior** (`node -v`) | interface Vite |
 
 Também é obrigatório:
 
-1. **Docker em execução** antes de `docker compose up` e antes de `dotnet test` (os testes de integração sobem um SQL Server com Testcontainers).
-2. **Portas livres:** `1433` (SQL), `5080` (API) e `5173` (Vite).
+1. **Docker Desktop aberto** (ícone da baleia) **antes** de `docker compose up` e **antes** de `dotnet test` (os testes de integração sobem outro SQL Server com Testcontainers).
+2. **Portas livres:** `1433` (SQL), `5080` (API) e `5173` (Vite). No Windows, um SQL Server instalado na máquina costuma ocupar a `1433`.
 3. **Acesso à internet na primeira sincronização**, para a API falar com `https://info.dengue.mat.br/`. Sem rede a API sobe mesmo assim; a carga falha no log e o `GET` só devolve o que já estiver no banco.
 4. **Senha do SQL igual no Compose e na connection string** (já vem assim no repositório; veja [Configuração](#configuração)).
 
 Não é obrigatório:
 
 - ferramenta `dotnet-ef` na linha de comando — o `dotnet run` aplica as migrations sozinho;
-- HTTPS de desenvolvimento — a API local é só HTTP em `http://localhost:5080`;
-- arquivo `.env` no frontend — se `VITE_API_URL` não existir, a interface usa `http://localhost:5080`.
+- HTTPS de desenvolvimento — a API local é só HTTP em `http://localhost:5080` (perfil `http`). Não use o perfil `https` do Visual Studio / Rider;
+- criar arquivo `.env` no frontend — o repositório já tem `frontend/.env.development` com `VITE_API_URL=http://localhost:5080`. Se a variável não existir, a interface usa o mesmo endereço.
+
+## Conferência rápida do ambiente
+
+Na **raiz do repositório** (a pasta que contém `docker-compose.yml` e as pastas `backend/` e `frontend/`):
+
+```powershell
+dotnet --version    # deve começar com 10.
+node -v             # v20 ou maior
+docker version      # Engine precisa responder; se falhar, abra o Docker Desktop e espere ficar verde
+```
+
+No PowerShell desta máquina, encadeie comandos com `;` (não use `&&`).
 
 ## Layout
 
@@ -79,51 +91,52 @@ A carga sempre pede `disease=dengue` e `format=json`. Cidade e recorte de seis m
 | Onde | Chave | Padrão |
 |---|---|---|
 | `appsettings.json` → `Cors:FrontendOrigin` | origem liberada | `http://localhost:5173` |
-| `frontend/.env.example` | `VITE_API_URL` | `http://localhost:5080` |
+| `frontend/.env.development` | `VITE_API_URL` | `http://localhost:5080` |
 
-Para apontar a interface para outra API:
+O Vite está com `strictPort: true` na `5173`. Se a porta estiver ocupada, o `npm run dev` **falha** em vez de abrir `5174` (o que quebraria o CORS). Encerre o outro processo ou mude a porta **e** `Cors:FrontendOrigin` juntos.
 
-```powershell
-cd frontend
-Copy-Item .env.example .env.development
-```
-
-Edite `VITE_API_URL` e **reinicie** o `npm run dev` (variável Vite só entra no boot). Se a origem do Vite mudar, atualize também `Cors:FrontendOrigin` na API.
+Para apontar a interface para outra API, edite `VITE_API_URL` e **reinicie** o `npm run dev` (variável Vite só entra no boot).
 
 Fuso usado no serviço e na tela: **America/Sao_Paulo**.
 
-## Como executar (passo a passo)
+## Como executar (nessa ordem)
 
-Na raiz do repositório. No PowerShell desta máquina, encadeie comandos com `;` (não use `&&`).
+Três terminais. Sempre a partir da **raiz do repositório**, salvo o passo 3.
 
 ### 1. Banco
+
+Na primeira vez o Docker baixa a imagem do SQL Server (pode levar vários minutos). Depois:
 
 ```powershell
 docker compose up -d
 ```
 
-Espere o healthcheck (cerca de 20–40 s na primeira vez). Confira:
+Se o comando `docker compose` não existir, tente `docker-compose up -d`.
+
+Espere o healthcheck (cerca de 20–40 s **depois** da imagem já estar baixada). Confira:
 
 ```powershell
 docker compose ps
 ```
 
-O serviço `sqlserver` deve aparecer como healthy/running.
+A coluna `STATUS` do serviço `sqlserver` precisa ter `healthy` (ou `running (healthy)`). Se estiver só `starting`, espere e rode `ps` de novo. **Não** suba a API antes disso.
 
 ### 2. API
 
 ```powershell
-dotnet run --project backend/src/Api
+dotnet run --project backend/src/Api --launch-profile http
 ```
 
 - URL: [http://localhost:5080](http://localhost:5080)
-- Swagger (Development): [http://localhost:5080/swagger](http://localhost:5080/swagger)
+- Swagger (ambiente Development): [http://localhost:5080/swagger](http://localhost:5080/swagger)
 
 Na inicialização a API:
 
 1. aplica as migrations;
 2. abre a porta **sem esperar** a Infodengue;
 3. dispara a carga dos últimos seis meses em segundo plano (erros vão para o log; o processo continua).
+
+A sync inicial pode levar alguns segundos. Enquanto ela não termina, um `GET` de semana recente pode voltar `404`. Se o log mostrar `Falha HTTP ao sincronizar alertas da AlertaDengue`, chame o `POST` da seção [Sincronização](#sincronização) com a rede ok.
 
 ### 3. Interface
 
@@ -139,9 +152,14 @@ Abre [http://localhost:5173](http://localhost:5173).
 
 A tela calcula as três SEs fechadas, chama `GET /api/dengue?ew=&ey=` três vezes em paralelo e monta cartões, tabela e gráfico. `404` vira “Sem registro”. Falha de rede não mostra dados parciais.
 
+### Como parar
+
+- API e Vite: `Ctrl+C` em cada terminal.
+- Banco (opcional; apaga só o container, não o código): `docker compose down` na raiz.
+
 ## Sincronização
 
-Há **uma carga por vez** (trava em memória).
+Há **uma carga por vez** (trava em memória). Startup e `POST` não rodam em paralelo.
 
 | Gatilho | Comportamento |
 |---|---|
@@ -169,20 +187,22 @@ GET /api/dengue?ew={1-53}&ey={ano}
 - Fora desses intervalos: `400`
 - Semana inexistente no banco: `404`
 
-Exemplo (PowerShell):
+A carga local **só** guarda a janela de ~6 meses. O JSON `2023-40` do enunciado é o **formato do contrato**, não uma semana que exista no seu banco depois do primeiro `run`. `GET ?ew=40&ey=2023` vai dar **404** — isso é esperado.
+
+Depois da sync, use uma semana que o painel mostrar (rótulo `AAAA-SS` → `ey=AAAA` e `ew=SS`). Exemplo no PowerShell, ajustando semana e ano aos cartões da tela:
 
 ```powershell
-Invoke-RestMethod "http://localhost:5080/api/dengue?ew=40&ey=2023"
+Invoke-RestMethod "http://localhost:5080/api/dengue?ew=36&ey=2026"
 ```
 
-`200` no contrato:
+`200` no contrato (números variam; o formato é este):
 
 ```json
 {
-  "semana_epidemiologica": "2023-40",
-  "casos_est": 45,
-  "casos_notificados": 38,
-  "nivel_alerta": 2
+  "semana_epidemiologica": "2026-36",
+  "casos_est": 722,
+  "casos_notificados": 37,
+  "nivel_alerta": 3
 }
 ```
 
@@ -190,7 +210,7 @@ Na origem, `SE` é inteiro `AAAASS` (ex.: `202340`). O banco guarda ano e semana
 
 ## Testes
 
-**Pare a API** antes de testar no Windows: com o processo rodando, o `dotnet test` pode falhar ao copiar o `exe`/`dll` em `bin/Debug`.
+**Pare a API** (`Ctrl+C`) antes de testar no Windows: com o processo rodando, o `dotnet test` pode falhar ao copiar o `exe`/`dll` em `bin/Debug`. Docker Desktop precisa estar aberto.
 
 ```powershell
 dotnet test backend/Opus127.Dengue.sln
@@ -201,15 +221,28 @@ dotnet test backend/Opus127.Dengue.sln
 
 CI no GitHub Actions (`.github/workflows/ci.yml`): o mesmo `dotnet test` em `main` e PRs. Sem deploy.
 
-A interface **não** tem bateria automatizada; a verificação é manual neste README.
+A interface **não** tem bateria automatizada; a verificação é o checklist abaixo.
+
+## Deu certo? Checklist de fumaça
+
+Faça nesta ordem. Se um passo falhar, pare e use [Problemas comuns](#problemas-comuns).
+
+1. `docker compose ps` → `sqlserver` **healthy**.
+2. `http://localhost:5080/swagger` abre e lista `GET /api/dengue` e `POST /api/dengue/sync`.
+3. `http://localhost:5173` mostra três cartões (ou “Sem registro” se a Infodengue ainda não publicou aquela SE).
+4. O rótulo de um cartão preenchido, usado no `GET ?ew=&ey=`, devolve `200` com as quatro chaves do contrato.
 
 ## Problemas comuns
 
 | Sintoma | O que conferir |
 |---|---|
-| API não sobe / erro de migrate | `docker compose ps`; senha `Opus127_Dev!` igual no Compose e no `appsettings.json`; porta `1433` livre |
-| `GET` sempre 404 | a sync ainda não terminou ou a Infodengue falhou; veja o log e chame `POST /api/dengue/sync` |
-| Frontend sem dados / CORS | API em `5080`, Vite em `5173`, `VITE_API_URL` e `Cors:FrontendOrigin` alinhados |
+| `docker version` falha / `compose` não acha o daemon | Docker Desktop aberto e “engine running”; espere o ícone ficar parado |
+| `compose` baixa sem parar / demora | primeira vez baixa ~1 GB; não é erro |
+| API não sobe / erro de migrate | `docker compose ps` **healthy**; senha `Opus127_Dev!` igual no Compose e no `appsettings.json`; porta `1433` livre (pare o SQL Server local do Windows se estiver instalado) |
+| `GET` de `2023-40` dá 404 | esperado: essa semana não entra na janela de 6 meses. Use uma semana do painel |
+| `GET` recente sempre 404 | sync ainda não terminou ou a Infodengue falhou; veja o log (`Falha HTTP ao sincronizar…`) e chame `POST /api/dengue/sync` |
+| Frontend em branco / CORS no DevTools | API em `5080`, Vite **exato** em `5173`, `VITE_API_URL` e `Cors:FrontendOrigin` alinhados; reinicie o Vite depois de editar `.env` |
+| `Port 5173 is already in use` | outro Vite/processo na porta; encerre-o. O projeto não muda sozinho para `5174` |
 | `dotnet test` falha com arquivo bloqueado | encerre `Opus127.Dengue.Api` e rode de novo |
 | Testes de integração estouram timeout | Docker Desktop precisa estar aberto |
 

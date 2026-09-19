@@ -76,4 +76,16 @@ public class EpidemiologicalCalendarTests
         weeks[1].ToContractString().Should().Be("2026-35");
         weeks[2].ToContractString().Should().Be("2026-34");
     }
+
+    [Fact]
+    public void RangesForLastMonths_uses_sao_paulo_civil_date_not_utc()
+    {
+        var utcAlreadySunday = new DateTimeOffset(2026, 9, 20, 2, 0, 0, TimeSpan.Zero);
+
+        var ranges = EpidemiologicalCalendar.RangesForLastMonths(utcAlreadySunday);
+
+        ranges.Should().ContainSingle();
+        ranges[0].EyEnd.Should().Be(2026);
+        ranges[0].EwEnd.Should().Be(37);
+    }
 }
