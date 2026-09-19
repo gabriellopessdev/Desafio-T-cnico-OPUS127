@@ -79,10 +79,10 @@ public class DengueSyncServiceTests
         var logger = new CapturingLogger<DengueSyncHostedService>();
 
         var hosted = new DengueSyncHostedService(scopeFactory, logger);
-        var start = () => hosted.StartAsync(CancellationToken.None);
 
-        await start.Should().NotThrowAsync();
-        await hosted.StopAsync(CancellationToken.None);
+        var act = () => hosted.SyncOnceAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
         logger.Entries.Should().Contain(entry =>
             entry.Level == LogLevel.Error && entry.Exception is HttpRequestException);
     }
