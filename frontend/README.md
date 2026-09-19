@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:5173`. A origem da API vem de `VITE_API_URL` em `.env.development` (`http://localhost:5080`).
+Abre `http://localhost:5173`. A origem da API é `VITE_API_URL` (padrão `http://localhost:5080`). Para sobrescrever: copie `.env.example` para `.env.development` e reinicie o Vite.
 
 ## O que a tela faz
 
@@ -23,4 +23,4 @@ Abre `http://localhost:5173`. A origem da API vem de `VITE_API_URL` em `.env.dev
 - Dispara três `GET /api/dengue?ew=&ey=` em paralelo.
 - 404 vira cartão “Sem registro”; falha de rede esconde dados parciais.
 
-O guia completo (Docker, API, testes) permanece no README da raiz — Task 9 do plano.
+O guia completo (pré-requisitos, configuração, Docker, API e testes) está no [README da raiz](../README.md).
