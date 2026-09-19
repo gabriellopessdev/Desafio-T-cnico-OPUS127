@@ -76,19 +76,15 @@ public class DengueSyncServiceTests
         scope.ServiceProvider.Returns(provider);
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
         scopeFactory.CreateScope().Returns(scope);
-        var logger = Substitute.For<ILogger<DengueSyncHostedService>>();
+        var logger = new CapturingLogger<DengueSyncHostedService>();
 
         var hosted = new DengueSyncHostedService(scopeFactory, logger);
         var start = () => hosted.StartAsync(CancellationToken.None);
 
         await start.Should().NotThrowAsync();
         await hosted.StopAsync(CancellationToken.None);
-        logger.Received().Log(
-            LogLevel.Error,
-            Arg.Any<EventId>(),
-            Arg.Any<object>(),
-            Arg.Any<HttpRequestException>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        logger.Entries.Should().Contain(entry =>
+            entry.Level == LogLevel.Error && entry.Exception is HttpRequestException);
     }
 
     private static DengueSyncService CreateService(IAlertaDengueClient client, IDengueAlertRepository repository)
@@ -147,6 +143,34 @@ public class DengueSyncServiceTests
             }
 
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
         }
     }
 }
