@@ -82,6 +82,7 @@ public class DengueSyncServiceTests
         var start = () => hosted.StartAsync(CancellationToken.None);
 
         await start.Should().NotThrowAsync();
+        await hosted.StopAsync(CancellationToken.None);
         logger.Received().Log(
             LogLevel.Error,
             Arg.Any<EventId>(),
