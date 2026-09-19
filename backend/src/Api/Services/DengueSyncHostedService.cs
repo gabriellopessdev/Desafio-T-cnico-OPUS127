@@ -13,7 +13,10 @@ public sealed class DengueSyncHostedService : BackgroundService
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        => SyncOnceAsync(stoppingToken);
+
+    internal async Task SyncOnceAsync(CancellationToken stoppingToken)
     {
         try
         {
