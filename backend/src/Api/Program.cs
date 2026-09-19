@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Opus127.Dengue.Api.Data;
 using Opus127.Dengue.Api.Integrations.AlertaDengue;
+using Opus127.Dengue.Api.Repositories;
+using Opus127.Dengue.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,9 @@ builder.Services.AddDbContext<DengueDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Dengue")));
 builder.Services.AddHttpClient<IAlertaDengueClient, AlertaDengueClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["AlertaDengue:BaseUrl"]!));
+builder.Services.AddScoped<IDengueAlertRepository, DengueAlertRepository>();
+builder.Services.AddScoped<IDengueSyncService, DengueSyncService>();
+builder.Services.AddHostedService<DengueSyncHostedService>();
 
 var app = builder.Build();
 
