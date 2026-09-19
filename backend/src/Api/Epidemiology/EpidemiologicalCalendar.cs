@@ -28,7 +28,7 @@ public static class EpidemiologicalCalendar
     public static IReadOnlyList<(int EyStart, int EwStart, int EyEnd, int EwEnd)> RangesForLastMonths(
         DateTimeOffset now, int months = 6)
     {
-        var end = DateOnly.FromDateTime(now.UtcDateTime);
+        var end = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, SaoPaulo).DateTime);
         var start = end.AddMonths(-months);
         var startWeek = FromDate(start);
         var endWeek = FromDate(end);

@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:5173`. A origem da API é `VITE_API_URL` (padrão `http://localhost:5080`). Para sobrescrever: copie `.env.example` para `.env.development` e reinicie o Vite.
+Abre `http://localhost:5173` (porta fixa; se estiver ocupada o Vite falha em vez de ir para `5174`). A origem da API é `VITE_API_URL` em `.env.development` (padrão `http://localhost:5080`). Reinicie o Vite depois de editar.
 
 ## O que a tela faz
 
