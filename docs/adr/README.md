@@ -7,3 +7,4 @@
 5. [Formato da semana epidemiológica](0005-formato-semana-epidemiologica.md)
 6. [Testes de integração no SQL Server real](0006-testes-integracao-sql-server.md)
 7. [SPA Vite + React + TS + Tailwind](0007-frontend-vite-react-tailwind.md)
+8. [Painel só com semanas epidemiológicas fechadas](0008-painel-semanas-fechadas.md)

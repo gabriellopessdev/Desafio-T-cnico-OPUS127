@@ -2,11 +2,11 @@
 
 ## Problema
 
-Equipes de saúde e gestão precisam acompanhar o alerta de dengue em Belo Horizonte com números oficiais da Infodengue, sem consultar a origem a cada tela. Falta um serviço próprio que traga as últimas 26 semanas, guarde no banco da organização e permita consultar uma semana epidemiológica e ver as três semanas mais recentes numa interface clara.
+Equipes de saúde e gestão precisam acompanhar o alerta de dengue em Belo Horizonte com números oficiais da Infodengue, sem consultar a origem a cada tela. Falta um serviço próprio que traga as últimas 26 semanas, guarde no banco da organização e permita consultar uma semana epidemiológica e ver as três semanas fechadas mais recentes numa interface clara.
 
 ## Solução
 
-Um serviço em .NET que busca os boletins de Belo Horizonte (código IBGE `3106200`) na AlertaDengue, grava no SQL Server e responde consultas por ano e semana. Uma aplicação web em React mostra as três últimas semanas, cada uma obtida por uma consulta própria ao serviço. O banco sobe em contêiner; o serviço e a interface rodam na máquina de quem opera. Requisitos e decisões ficam neste documento e nos registros de arquitetura.
+Um serviço em .NET que busca os boletins de Belo Horizonte (código IBGE `3106200`) na AlertaDengue, grava no SQL Server e responde consultas por ano e semana. Uma aplicação web em React mostra as três últimas semanas epidemiológicas já encerradas, cada uma obtida por uma consulta própria ao serviço. O banco sobe em contêiner; o serviço e a interface rodam na máquina de quem opera. Requisitos e decisões ficam neste documento e nos registros de arquitetura.
 
 ## Histórias de usuário
 
@@ -59,7 +59,7 @@ Contrato de leitura (`GET /api/dengue?ew={1-53}&ey={ano}`):
 - API local só em HTTP: `http://localhost:5080` (sem HTTPS de desenvolvimento).
 - Nomes do JSON de leitura: `casos_notificados` e `nivel_alerta`, mesmo a origem usar `casos` e `nivel`.
 - Origens cruzadas liberadas só para a interface em desenvolvimento (`http://localhost:5173`). Endereço do serviço na variável `VITE_API_URL`.
-- A interface calcula as três últimas semanas (mesmo calendário) e faz três leituras em paralelo. Não há rota de “últimas três” no servidor.
+- A interface calcula as três últimas semanas já encerradas (mesmo calendário; a semana vigente fica de fora) e faz três leituras em paralelo. Não há rota de “últimas três” no servidor.
 - Uma tela: cartões, tabela e gráfico. Sem autenticação. Cidade fixa no serviço.
 - A carga na inicialização não prende a abertura da porta do serviço: roda em segundo plano.
 
@@ -86,5 +86,5 @@ Contrato de leitura (`GET /api/dengue?ew={1-53}&ey={ano}`):
 
 - Organização e registros de decisão fazem parte do produto, junto com o código.
 - Risco: Infodengue lenta ou indisponível — mitigado por gravação local, leitura só no banco e inicialização que não encerra o processo.
-- Risco: semana corrente ainda sem boletim — a interface mostra vazio naquele cartão.
+- Risco: semana fechada ainda sem boletim — a interface mostra vazio naquele cartão. A semana vigente não entra no painel.
 - Risco: virada de ano e anos com 53 semanas — coberto pelos testes isolados da janela.

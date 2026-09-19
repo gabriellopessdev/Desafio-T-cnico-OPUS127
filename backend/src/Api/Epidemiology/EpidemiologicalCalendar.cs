@@ -2,15 +2,20 @@ namespace Opus127.Dengue.Api.Epidemiology;
 
 public static class EpidemiologicalCalendar
 {
+    private static readonly TimeZoneInfo SaoPaulo =
+        TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
     public static EpidemiologicalWeek FromDate(DateOnly date)
     {
-        var jan4 = new DateOnly(date.Year, 1, 4);
-        var week1Sunday = StartOfWeekSunday(jan4);
-        if (date < week1Sunday)
+        var week1ThisYear = StartOfWeekSunday(new DateOnly(date.Year, 1, 4));
+        var week1NextYear = StartOfWeekSunday(new DateOnly(date.Year + 1, 1, 4));
+        if (date < week1ThisYear)
             return FromDate(new DateOnly(date.Year - 1, 12, 31));
+        if (date >= week1NextYear)
+            return new EpidemiologicalWeek(date.Year + 1, 1);
 
         var sunday = StartOfWeekSunday(date);
-        var week = ((sunday.DayNumber - week1Sunday.DayNumber) / 7) + 1;
+        var week = ((sunday.DayNumber - week1ThisYear.DayNumber) / 7) + 1;
         return new EpidemiologicalWeek(date.Year, week);
     }
 
@@ -40,7 +45,8 @@ public static class EpidemiologicalCalendar
     public static IReadOnlyList<EpidemiologicalWeek> LastWeeks(DateTimeOffset now, int count = 3)
     {
         var list = new List<EpidemiologicalWeek>(count);
-        var cursorSunday = StartOfWeekSunday(DateOnly.FromDateTime(now.UtcDateTime));
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, SaoPaulo).DateTime);
+        var cursorSunday = StartOfWeekSunday(today).AddDays(-7);
         for (var i = 0; i < count; i++)
         {
             list.Add(FromDate(cursorSunday));
